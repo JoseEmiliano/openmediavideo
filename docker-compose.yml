@@ -1,0 +1,11 @@
+services:
+  yt-downloader:
+    build: .
+    container_name: wsl_yt_downloader
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./downloads:/app/downloads
+    security_opt:
+      - no-new-privileges:true
