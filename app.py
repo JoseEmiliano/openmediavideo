@@ -7,9 +7,11 @@ import threading
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 app.config['UPLOAD_FOLDER'] = os.path.abspath("downloads")
+app.config['MAX_CONTENT_LENGTH'] = 2048 * 1024 * 1024  # Permitir hasta 2GB de subida
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 descarga_estado = {"mensaje": "Esperando inicio...", "archivo": None, "completado": False}
+conversion_estado = {"mensaje": "Esperando archivo...", "archivo": None, "completado": False}
 
 COMMON_STYLE = """
     body { font-family: Arial, sans-serif; background: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
@@ -25,7 +27,7 @@ COMMON_STYLE = """
     .btn-tool:hover { background: #0ea5e9; color: white; }
     .error { color: #f87171; text-align: center; font-size: 14px; margin-top: 10px; }
     .progress-box { margin-top: 15px; background: #0f172a; padding: 12px; border-radius: 6px; border: 1px solid #38bdf8; }
-    #status-text { font-size: 13px; color: #38bdf8; font-family: monospace; text-align: center; margin: 0; word-break: break-all; }
+    #status-text, #conv-status-text { font-size: 13px; color: #38bdf8; font-family: monospace; text-align: center; margin: 0; word-break: break-all; }
     .donation-box { margin-top: 18px; text-align: center; border-top: 1px solid #334155; padding-top: 12px; }
     .donation-box p { font-size: 12px; color: #94a3b8; margin-bottom: 6px; }
     .donation-box img { height: 32px; }
@@ -119,7 +121,7 @@ HTML_SELECT = """
                         clearInterval(interval);
                         document.getElementById('status-text').innerText = "¡Proceso finalizado! Descargando...";
                         window.location.href = '/download-file';
-                        setTimeout(() => { btn = document.getElementById('btn-descargar'); btn.disabled = false; btn.innerText = "Descargar a mi PC"; }, 3000);
+                        setTimeout(() => { let btn = document.getElementById('btn-descargar'); btn.disabled = false; btn.innerText = "Descargar a mi PC"; }, 3000);
                     }
                 });
             }, 800);
@@ -153,11 +155,52 @@ HTML_CONVERT = """
     <meta charset="UTF-8">
     <title>Conversor y Compresor - Open Media</title>
     <style>""" + COMMON_STYLE + """</style>
+    <script>
+        function iniciarConversion(event) {
+            event.preventDefault();
+            let btn = document.getElementById('btn-convertir');
+            btn.disabled = true;
+            btn.innerText = "Subiendo y procesando...";
+
+            let formData = new FormData(document.getElementById('convert-form'));
+
+            fetch('/convert-async', {
+                method: 'POST',
+                body: formData
+            }).then(res => res.json()).then(data => {
+                if (data.status === 'started') {
+                    verificarProgresoConversion();
+                } else {
+                    alert("Error: " + data.message);
+                    btn.disabled = false;
+                    btn.innerText = "Procesar Archivo";
+                }
+            });
+        }
+
+        function verificarProgresoConversion() {
+            let interval = setInterval(() => {
+                fetch('/convert-progress').then(res => res.json()).then(data => {
+                    document.getElementById('conv-status-text').innerText = data.mensaje;
+                    if (data.completado) {
+                        clearInterval(interval);
+                        document.getElementById('conv-status-text').innerText = "¡Procesamiento exitoso! Descargando archivo...";
+                        window.location.href = '/convert-download-file';
+                        setTimeout(() => {
+                            let btn = document.getElementById('btn-convertir');
+                            btn.disabled = false;
+                            btn.innerText = "Procesar Archivo";
+                        }, 3000);
+                    }
+                });
+            }, 1000);
+        }
+    </script>
 </head>
 <body>
     <div class="card">
         <h2>🔄 Conversor y Compresor</h2>
-        <form method="POST" action="/convert-action" enctype="multipart/form-data">
+        <form id="convert-form" onsubmit="iniciarConversion(event)">
             <label>Sube tu archivo de video local:</label>
             <input type="file" name="video_file" accept="video/*" required style="padding: 6px; background:#334155;">
             
@@ -175,11 +218,13 @@ HTML_CONVERT = """
                 <option value="alta">📈 Alta Calidad (Conservar definición)</option>
             </select>
 
-            <button type="submit">Procesar Archivo</button>
+            <button type="submit" id="btn-convertir">Procesar Archivo</button>
         </form>
-        {% if error %}
-            <p class="error">{{ error }}</p>
-        {% endif %}
+
+        <div class="progress-box">
+            <p id="conv-status-text">Estado: Esperando archivo...</p>
+        </div>
+
         <a href="/">⬅ Volver al menú principal</a>
         <div class="footer-brand">
             Hecho con amor 💙 por José Emiliano<br><a href="https://gestioncloud.com.ar" target="_blank">GESTIONCLOUD.COM.AR</a>
@@ -201,14 +246,14 @@ def downloader_ui():
 def convert_tools():
     return render_template_string(HTML_CONVERT)
 
-@app.route('/convert-action', methods=['POST'])
-def convert_action():
+@app.route('/convert-async', methods=['POST'])
+def convert_async():
     if 'video_file' not in request.files:
-        return render_template_string(HTML_CONVERT, error="No se adjuntó ningún archivo.")
+        return jsonify({"status": "error", "message": "No se adjuntó archivo."})
     
     file = request.files['video_file']
     if file.filename == '':
-        return render_template_string(HTML_CONVERT, error="Nombre de archivo vacío.")
+        return jsonify({"status": "error", "message": "Nombre de archivo vacío."})
 
     format_out = request.form.get('format_out', 'mp4')
     preset = request.form.get('preset', 'normal')
@@ -216,24 +261,48 @@ def convert_action():
     input_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
     file.save(input_path)
 
-    output_path = convertir_o_comprimir_video(input_path, formato_salida=format_out, preset_calidad=preset)
+    global conversion_estado
+    conversion_estado = {"mensaje": "Archivo recibido. Iniciando FFmpeg...", "archivo": None, "completado": False}
 
-    # Limpiar archivo original subido
-    try:
-        os.remove(input_path)
-    except:
-        pass
+    def tarea_conversion():
+        global conversion_estado
+        try:
+            output_path = convertir_o_comprimir_video(input_path, formato_salida=format_out, preset_calidad=preset)
+            if output_path and os.path.exists(output_path):
+                conversion_estado["archivo"] = output_path
+                conversion_estado["mensaje"] = "¡Conversión finalizada con éxito!"
+                conversion_estado["completado"] = True
+            else:
+                conversion_estado["mensaje"] = "Error crítico al procesar con FFmpeg."
+        except Exception as e:
+            conversion_estado["mensaje"] = f"Error: {str(e)}"
+        finally:
+            try:
+                os.remove(input_path)
+            except:
+                pass
 
-    if output_path and os.path.exists(output_path):
+    threading.Thread(target=tarea_conversion).start()
+    return jsonify({"status": "started"})
+
+@app.route('/convert-progress', methods=['GET'])
+def convert_progress():
+    global conversion_estado
+    return jsonify(conversion_estado)
+
+@app.route('/convert-download-file', methods=['GET'])
+def convert_download_file():
+    global conversion_estado
+    fp = conversion_estado.get("archivo")
+    if fp and os.path.exists(fp):
         def generate():
             try:
-                with open(output_path, "rb") as f: yield from f
+                with open(fp, "rb") as f: yield from f
             finally:
-                try: os.remove(output_path)
+                try: os.remove(fp)
                 except: pass
-        return app.response_class(generate(), mimetype="application/octet-stream", headers={"Content-Disposition": f"attachment; filename={os.path.basename(output_path)}"})
-    
-    return render_template_string(HTML_CONVERT, error="Error al procesar el video con FFmpeg.")
+        return app.response_class(generate(), mimetype="application/octet-stream", headers={"Content-Disposition": f"attachment; filename={os.path.basename(fp)}"})
+    return redirect(url_for('index'))
 
 @app.route('/inspect', methods=['POST'])
 def inspect():
