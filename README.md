@@ -24,7 +24,7 @@ Un proyecto impulsado por [GESTIONCLOUD.COM.AR](https://gestioncloud.com.ar)
 1. **📥 Descargador Multimedia Avanzado:**
    - **Inspección de Streams:** Analiza enlaces en tiempo real y detecta pistas de audio y resoluciones de video disponibles.
    - **Múltiples Calidades:** Soporta selecciones desde `144p` hasta `4K` en contenedores `MP4` y `WebM`, además de extracción directa de audio a `MP3` en 192 kbps.
-   - **Estrategia Fallback:** Algoritmo de reintentos secuenciales para sortear limitaciones en plataformas con streaming fragmentado o adaptativo (DASH/HLS como YouTube, Dailymotion, etc.).
+   - **Estrategia Fallback:** Algoritmo de reintentos secuenciales para sortear limitaciones en plataformas con streaming fragmentado o adaptativo (DASH/HLS).
 
 2. **🔄 Conversor y Compresor de Video:**
    - **Formatos Soportados:** Conversión flexible entre `MP4`, `MKV` y `WebM`.
