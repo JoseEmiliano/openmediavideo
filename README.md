@@ -12,7 +12,7 @@ Un proyecto de [GESTIONCLOUD.COM.AR](https://gestioncloud.com.ar)
 1. **📥 Descargador Multimedia Avanzado:**
    - Inspección inteligente de enlaces multimedia.
    - Listado dinámico de resoluciones disponibles (desde `144p` hasta `4K` en formatos `MP4` y `WebM`) o extracción directa de audio en alta calidad (`MP3`).
-   - Estrategia de reintentos múltiples y respaldo de formatos para garantizar la compatibilidad con plataformas de streaming fragmentado (YouTube, Dailymotion, etc.).
+   - Estrategia de reintentos múltiples y respaldo de formatos para garantizar la compatibilidad con plataformas de streaming fragmentado (Youtub, Daily, etc.).
 
 2. **🔄 Conversor y Compresor de Video:**
    - Soporte para subida de archivos locales de video (`MP4`, `MKV`, `WebM`).
@@ -85,5 +85,5 @@ Para garantizar la estabilidad del sistema, ten en cuenta las siguientes conside
         <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height:36px;">
     </a>
     <br><br>
-    Hecho con amor 💙 por JoseEmiliano — Un proyecto de <a href="https://gestioncloud.com.ar" target="_blank">GESTIONCLOUD.COM.AR</a>
+    Made with 💙 por JoseEmiliano — Un proyecto tambien apoyado por <a href="https://gestioncloud.com.ar" target="_blank">GESTIONCLOUD.COM.AR</a>
 </div>
