@@ -52,3 +52,6 @@ openmediavideo/
 ├── Dockerfile             # Imagen base con Python 3.11 y binarios de FFmpeg
 ├── docker-compose.yml     # Orquestación de servicios y montaje de volúmenes
 └── downloads/             # Directorio de trabajo y caché temporal
+
+[![Invitame un café en cafecito.app](https://cdn.cafecito.app/imgs/buttons/button_1.svg)](https://cafecito.app/kempcloud)
+
