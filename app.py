@@ -291,7 +291,8 @@ HTML_HOME = """
             <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom:6px;">¿Te gusta esta herramienta Open Source?</p>
             <a href="https://buymeacoffee.com/josenunez1t" target="_blank">
                 <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height:28px;">
-            </a>
+            </a><a href='https://cafecito.app/kempcloud' rel='noopener' target='_blank'><img srcset='https://cdn.cafecito.app/imgs/buttons/button_1.png 1x, https://cdn.cafecito.app/imgs/buttons/button_1_2x.png 2x, https://cdn.cafecito.app/imgs/buttons/button_1_3.75x.png 3.75x' src='https://cdn.cafecito.app/imgs/buttons/button_1.png' alt='Invitame un café en cafecito.app' /></a>
+            
         </div>
 
         <div class="footer-brand">
