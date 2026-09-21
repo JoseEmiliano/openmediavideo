@@ -1,5 +1,6 @@
 FROM python:3.11-slim
 
+# Instalar FFmpeg y dependencias del sistema
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
@@ -11,8 +12,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN useradd -m appuser && chown -R appuser:appuser /app
-USER appuser
+# Asegurar carpeta de descargas con acceso total
+RUN mkdir -p /app/downloads
 
 EXPOSE 5000
 

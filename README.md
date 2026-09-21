@@ -1,51 +1,44 @@
-# 🎬 Open Media Video Downloader (Self-Hosted Edition)
+# 🎬 Open Media Video Suite
 
-Herramienta web modular, segura y de código abierto desarrollada por **José Nuñez** para respaldar clases, conferencias y recursos educativos (ideal para materias de ingeniería y laboratorios) desde múltiples plataformas de video. 
+Plataforma web *self-hosted* integral desarrollada con **Python, Flask, Docker, yt-dlp y FFmpeg** para la descarga de streams multimedia y el procesamiento local de videos.
 
-El sistema está empaquetado mediante contenedores **Docker** para garantizar un despliegue aislado, reproducible y multiplataforma en cualquier entorno local (WSL, Linux, macOS, Windows o servidores Proxmox).
+Hecho con amor 💙 por **JoseEmiliano**  
+Un proyecto de [GESTIONCLOUD.COM.AR](https://gestioncloud.com.ar)
 
 ---
 
-## 🏗️ Arquitectura y Estructura del Proyecto
+## 🚀 Características Principales
 
-```text
-yt-downloader-lab/
-│
-├── app.py                # Interfaz web (Flask) en 2 pasos, telemetría y botón de donación.
-├── downloader.py         # Motor lógico basado en yt-dlp, validaciones de seguridad y FFmpeg.
-├── Dockerfile            # Imagen base (Python 3.11-slim + FFmpeg + Usuario no-root).
-├── docker-compose.yml    # Orquestador local con volúmenes persistentes y seguridad.
-├── requirements.txt      # Dependencias del ecosistema Python.
-├── LICENSE               # Licencia MIT (Derechos de autor protegidos).
-└── README.md             # Documentación técnica del proyecto.
+1. **📥 Descargador Multimedia (YouTube y más):**
+   - Inspección inteligente de enlaces multimedia.
+   - Listado de resoluciones disponibles desde `144p` hasta `4K` (`MP4`/`WebM`) o extracción directa de audio en alta calidad (`MP3`).
+   - Barra de progreso dinámica en tiempo real.
 
-📄 Contenido de los Archivos
-app.py: Controla rutas HTTP, sondeo asíncrono de progreso y autolimpieza post-descarga.
+2. **🔄 Conversor y Compresor de Video:**
+   - Subida de archivos locales de video.
+   - Opciones de exportación universal (`MP4`, `MKV`, `WebM`).
+   - Perfiles ajustables: *Comprimir (reducir tamaño)*, *Normal (balanceado)* y *Alta Calidad*.
 
-downloader.py: Extrae metadatos con yt-dlp, aplica validaciones estrictas (URL_REGEX) contra ataques y fusiona streams con FFmpeg.
+3. **🧹 Mantenimiento Automático:**
+   - Limpieza automática de la carpeta temporal de descargas tras completarse la transferencia al navegador, optimizando el espacio en disco.
 
-Dockerfile: Compila la imagen con FFmpeg ejecutándose bajo usuario seguro (appuser).
+---
 
-docker-compose.yml: Mapea el puerto 5000 y gestiona volúmenes y privilegios.
+## 🛠️ Tecnologías Utilizadas
 
-⚙️ Guía de Despliegue Local (Self-Hosted)
-Clonar e ingresar:
+* **Backend:** Python 3.11, Flask, yt-dlp, FFmpeg.
+* **Frontend:** HTML5, CSS3, JavaScript (Fetch API asíncrona).
+* **Despliegue:** Docker & Docker Compose (WSL).
 
-Bash
-git clone [https://github.com/tu-usuario/open-media-video-downloader.git](https://github.com/tu-usuario/open-media-video-downloader.git)
-cd open-media-video-downloader
-Levantar el servicio:
+---
 
-Bash
+## 📦 Instalación y Despliegue con Docker
+
+1. Clona este repositorio o copia los archivos en tu servidor/WSL.
+2. Asegúrate de tener instalado **Docker** y **Docker Compose**.
+3. Levanta el contenedor ejecutando:
+
+```bash
 docker compose up --build -d
-Acceso local:
 
-En Linux / macOS: http://localhost:5000
-
-En WSL (Windows): Ejecuta hostname -I en tu terminal y accede mediante http://<tu-ip-wsl>:5000.
-
-⚖️ Licencia y Copyright
-© 2026 José Nuñez. Distribuido bajo la Licencia MIT. Consulta el archivo LICENSE para más detalles.
-
-☕ Apoya este Proyecto
-
+Accede a la aplicación desde tu navegador en: http://localhost:5000

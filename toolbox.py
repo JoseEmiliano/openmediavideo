@@ -1,25 +1,27 @@
 import os
 import subprocess
+import traceback
 
 def convertir_o_comprimir_video(input_path, formato_salida="mp4", preset_calidad="normal"):
     """
-    Convierte y comprime un archivo de video local seleccionando 
-    los códecs adecuados según el formato de salida (MP4/MKV o WebM).
+    Convierte y comprime un archivo de video local utilizando FFmpeg con mapeo completo de streams.
     """
     if not os.path.exists(input_path):
-        print("[-] Error: El archivo de entrada no existe.")
+        print(f"[-] Error crítico: El archivo de entrada no existe en {input_path}")
         return None
     
+    input_path = os.path.abspath(input_path)
     output_dir = os.path.abspath("downloads")
+    os.makedirs(output_dir, exist_ok=True)
+
     base_name = os.path.splitext(os.path.basename(input_path))[0]
     output_path = os.path.join(output_dir, f"{base_name}_procesado.{formato_salida}")
 
-    cmd = ["ffmpeg", "-y", "-i", input_path]
+    # Comando base asegurando mapeo completo de todos los streams de entrada (-map 0)
+    cmd = ["ffmpeg", "-y", "-i", input_path, "-map", "0"]
 
-    # Configuración de códecs según el formato de salida elegido
     if formato_salida == "webm":
-        # WebM requiere libvpx / libvorbis o libopus
-        cmd.extend(["-c:v", "libvpx-vp9", "-pix_fmt", "yuv420p"])
+        cmd.extend(["-c:v", "libvpx-vp9", "-pix_fmt", "yuv420p", "-row-mt", "1", "-threads", "0"])
         if preset_calidad == "comprimir":
             cmd.extend(["-crf", "32", "-b:v", "0"])
         elif preset_calidad == "alta":
@@ -27,9 +29,17 @@ def convertir_o_comprimir_video(input_path, formato_salida="mp4", preset_calidad
         else:
             cmd.extend(["-crf", "24", "-b:v", "0"])
         cmd.extend(["-c:a", "libopus"])
-    else:
-        # MP4 y MKV usan H.264 / AAC
-        cmd.extend(["-c:v", "libx264", "-pix_fmt", "yuv420p"])
+    elif formato_salida == "mkv":
+        cmd.extend(["-c:v", "libx264", "-pix_fmt", "yuv420p", "-threads", "0"])
+        if preset_calidad == "comprimir":
+            cmd.extend(["-crf", "28", "-preset", "fast"])
+        elif preset_calidad == "alta":
+            cmd.extend(["-crf", "18", "-preset", "medium"])
+        else:
+            cmd.extend(["-crf", "23", "-preset", "medium"])
+        cmd.extend(["-c:a", "aac", "-b:a", "192k"])
+    else: # mp4
+        cmd.extend(["-c:v", "libx264", "-pix_fmt", "yuv420p", "-threads", "0"])
         if preset_calidad == "comprimir":
             cmd.extend(["-crf", "28", "-preset", "fast"])
         elif preset_calidad == "alta":
@@ -40,16 +50,16 @@ def convertir_o_comprimir_video(input_path, formato_salida="mp4", preset_calidad
 
     cmd.append(output_path)
 
-    print(f"[+] Ejecutando FFmpeg: {' '.join(cmd)}")
+    print(f"[+] Ejecutando FFmpeg robusto: {' '.join(cmd)}")
 
     try:
-        resultado = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        print("[+] Conversión a WebM/MP4 finalizada correctamente.")
+        proceso = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+        print("[+] Conversión finalizada con éxito.")
         return output_path
     except subprocess.CalledProcessError as e:
-        error_msg = e.stderr.decode('utf-8', errors='ignore')
-        print(f"[-] Error crítico de FFmpeg:\n{error_msg}")
+        print(f"[-] Error devuelto por FFmpeg:\n{e.stderr}")
         return None
     except Exception as ex:
-        print(f"[-] Error inesperado en Python: {str(ex)}")
+        print(f"[-] Excepción inesperada:\n{str(ex)}")
+        traceback.print_exc()
         return None
