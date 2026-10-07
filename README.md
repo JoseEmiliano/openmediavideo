@@ -35,8 +35,8 @@ Un proyecto impulsado por [GESTIONCLOUD.COM.AR](https://gestioncloud.com.ar)
    - **Mapeo Robusto (`-map 0`):** Integración estricta con FFmpeg para asegurar que ninguna pista de audio o video quede huérfana en el contenedor de salida.
 
 3. **🧹 Descarga Limpia y Gestión de Temporales:**
-   - **Streaming Directo al Navegador:** El cliente recibe el archivo procesado mediante streaming HTTP (`Content-Disposition: attachment`), eliminando la dependencia de rutas internas de almacenamiento.
-   - **Autolimpieza Automática:** El servidor purga los archivos procesados tan pronto concluye la transferencia hacia el cliente.
+   - **Descarga con Progreso Real:** El cliente recibe el archivo procesado mediante streaming HTTP y la interfaz muestra el porcentaje real de transferencia antes de guardarlo en la carpeta de descargas configurada por el navegador.
+   - **Autolimpieza Automática:** El servidor purga el archivo temporal cuando termina la transferencia al navegador, incluso si la conexión se interrumpe.
    - **Panel de Resguardo:** Interfaz interactiva en la página de inicio que lista archivos temporales activos con opciones para descarga directa o eliminación manual individual/global ante cortes de red imprevistos.
 
 ---
@@ -54,4 +54,3 @@ openmediavideo/
 └── downloads/             # Directorio de trabajo y caché temporal
 
 [![Invitame un café en cafecito.app](https://cdn.cafecito.app/imgs/buttons/button_1.svg)](https://cafecito.app/kempcloud)
-

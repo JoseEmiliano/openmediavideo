@@ -1,4 +1,5 @@
-from flask import Flask, render_template_string, request, send_file, session, abort, redirect, url_for, jsonify
+from flask import Flask, render_template_string, request, session, redirect, url_for, jsonify
+from werkzeug.utils import secure_filename
 from downloader import obtener_formatos_disponibles, descargar_multimedia
 from toolbox import convertir_o_comprimir_video
 import os
@@ -340,6 +341,46 @@ HTML_SELECT = """
     <title>Seleccionar Calidad - Open Media Video Suite</title>
     <style>""" + MODERN_STYLE + """</style>
     <script>
+        async function descargarArchivo(filename, statusElement, fillElement) {
+            statusElement.innerText = "Transfiriendo al navegador...";
+            const response = await fetch('/download-direct/' + encodeURIComponent(filename));
+            if (!response.ok || !response.body) {
+                throw new Error("No se pudo iniciar la transferencia.");
+            }
+
+            const total = Number(response.headers.get('Content-Length')) || 0;
+            const reader = response.body.getReader();
+            const partes = [];
+            let recibidos = 0;
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                partes.push(value);
+                recibidos += value.length;
+                if (total > 0) {
+                    const porcentaje = Math.round((recibidos / total) * 100);
+                    fillElement.style.width = porcentaje + '%';
+                    statusElement.innerText = `Descargando en el navegador... ${porcentaje}%`;
+                } else {
+                    statusElement.innerText = `Descargando en el navegador... ${Math.round(recibidos / 1024 / 1024)} MB`;
+                }
+            }
+
+            const blob = new Blob(partes, {
+                type: response.headers.get('Content-Type') || 'application/octet-stream'
+            });
+            const enlace = document.createElement('a');
+            const objectUrl = URL.createObjectURL(blob);
+            enlace.href = objectUrl;
+            enlace.download = filename;
+            document.body.appendChild(enlace);
+            enlace.click();
+            enlace.remove();
+            URL.revokeObjectURL(objectUrl);
+            fillElement.style.width = '100%';
+            statusElement.innerHTML = "¡Archivo descargado en tu navegador!<br><br><a href='/' class='btn-primary'>🏠 Volver al inicio</a>";
+        }
+
         function iniciarDescarga(event) {
             event.preventDefault();
             let btn = document.getElementById('btn-descargar');
@@ -360,10 +401,14 @@ HTML_SELECT = """
                     }
                     if (data.completado && data.archivo_descarga) {
                         clearInterval(interval);
-                        document.getElementById('bar-fill').style.width = '100%';
-                        // Disparar descarga limpia directa al navegador mediante enlace temporal
-                        window.location.href = '/download-direct/' + encodeURIComponent(data.archivo_descarga);
-                        document.getElementById('status-text').innerHTML = "¡Descarga iniciada en tu navegador!<br><br><a href='/' class='btn-primary'>🏠 Volver al inicio</a>";
+                        descargarArchivo(
+                            data.archivo_descarga,
+                            document.getElementById('status-text'),
+                            document.getElementById('bar-fill')
+                        ).catch(error => {
+                            document.getElementById('status-text').innerText = "Error al transferir: " + error.message;
+                            btn.style.display = 'block';
+                        });
                     }
                 });
             }, 800);
@@ -401,6 +446,46 @@ HTML_CONVERT = """
     <title>Conversor y Compresor - Open Media Video Suite</title>
     <style>""" + MODERN_STYLE + """</style>
     <script>
+        async function descargarArchivo(filename, statusElement, fillElement) {
+            statusElement.innerText = "Transfiriendo al navegador...";
+            const response = await fetch('/download-direct/' + encodeURIComponent(filename));
+            if (!response.ok || !response.body) {
+                throw new Error("No se pudo iniciar la transferencia.");
+            }
+
+            const total = Number(response.headers.get('Content-Length')) || 0;
+            const reader = response.body.getReader();
+            const partes = [];
+            let recibidos = 0;
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                partes.push(value);
+                recibidos += value.length;
+                if (total > 0) {
+                    const porcentaje = Math.round((recibidos / total) * 100);
+                    fillElement.style.width = porcentaje + '%';
+                    statusElement.innerText = `Descargando en el navegador... ${porcentaje}%`;
+                } else {
+                    statusElement.innerText = `Descargando en el navegador... ${Math.round(recibidos / 1024 / 1024)} MB`;
+                }
+            }
+
+            const blob = new Blob(partes, {
+                type: response.headers.get('Content-Type') || 'application/octet-stream'
+            });
+            const enlace = document.createElement('a');
+            const objectUrl = URL.createObjectURL(blob);
+            enlace.href = objectUrl;
+            enlace.download = filename;
+            document.body.appendChild(enlace);
+            enlace.click();
+            enlace.remove();
+            URL.revokeObjectURL(objectUrl);
+            fillElement.style.width = '100%';
+            statusElement.innerHTML = "¡Archivo descargado en tu navegador!<br><br><a href='/' class='btn-primary'>🏠 Volver al inicio</a>";
+        }
+
         function iniciarConversion(event) {
             event.preventDefault();
             let btn = document.getElementById('btn-convertir');
@@ -440,10 +525,14 @@ HTML_CONVERT = """
                     if (data.completado && data.archivo_descarga) {
                         clearInterval(interval);
                         clearInterval(fakeProgress);
-                        fill.style.width = '100%';
-                        // Disparar descarga limpia directa al navegador
-                        window.location.href = '/download-direct/' + encodeURIComponent(data.archivo_descarga);
-                        document.getElementById('conv-status-text').innerHTML = "¡Conversión exitosa y descargada!<br><br><a href='/' class='btn-primary'>🏠 Volver al inicio</a>";
+                        descargarArchivo(
+                            data.archivo_descarga,
+                            document.getElementById('conv-status-text'),
+                            fill
+                        ).catch(error => {
+                            document.getElementById('conv-status-text').innerText = "Error al transferir: " + error.message;
+                            document.getElementById('btn-convertir').style.display = 'block';
+                        });
                     }
                 });
             }, 800);
@@ -509,31 +598,43 @@ def clean_cache():
 @app.route('/delete-file/<filename>', methods=['GET'])
 def delete_file(filename):
     try:
-        fp = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        if os.path.exists(fp):
+        safe_filename = secure_filename(filename)
+        fp = os.path.abspath(os.path.join(app.config['UPLOAD_FOLDER'], safe_filename))
+        upload_folder = os.path.abspath(app.config['UPLOAD_FOLDER'])
+        if safe_filename == filename and os.path.dirname(fp) == upload_folder and os.path.isfile(fp):
             os.remove(fp)
         return redirect(url_for('index', msg=f"Archivo {filename} eliminado."))
-    except:
+    except OSError:
         return redirect(url_for('index', msg="No se pudo eliminar el archivo."))
 
 @app.route('/download-direct/<filename>', methods=['GET'])
 def download_direct(filename):
-    fp = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    if os.path.exists(fp):
+    safe_filename = secure_filename(filename)
+    fp = os.path.abspath(os.path.join(app.config['UPLOAD_FOLDER'], safe_filename))
+    upload_folder = os.path.abspath(app.config['UPLOAD_FOLDER'])
+    if safe_filename == filename and os.path.dirname(fp) == upload_folder and os.path.isfile(fp):
+        file_size = os.path.getsize(fp)
+
         def generate():
             try:
                 with open(fp, "rb") as f:
-                    yield from f
+                    while chunk := f.read(1024 * 1024):
+                        yield chunk
             finally:
                 try:
                     if os.path.exists(fp):
                         os.remove(fp)
-                except:
-                    pass
+                except OSError as error:
+                    app.logger.warning("No se pudo eliminar temporal %s: %s", fp, error)
+
         return app.response_class(
             generate(),
             mimetype="application/octet-stream",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
+            headers={
+                "Content-Disposition": f"attachment; filename={safe_filename}",
+                "Content-Length": str(file_size),
+                "Cache-Control": "no-store",
+            }
         )
     return redirect(url_for('index'))
 
@@ -557,7 +658,10 @@ def convert_async():
     format_out = request.form.get('format_out', 'mp4')
     preset = request.form.get('preset', 'normal')
 
-    input_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+    safe_input_name = secure_filename(file.filename)
+    if not safe_input_name:
+        return jsonify({"status": "error", "message": "Nombre de archivo no válido."})
+    input_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_input_name)
     file.save(input_path)
 
     global conversion_estado
@@ -638,16 +742,6 @@ def download_async():
 @app.route('/progress', methods=['GET'])
 def progress():
     global descarga_estado
-    if not descarga_estado.get("completado"):
-        files = glob.glob(os.path.join(app.config['UPLOAD_FOLDER'], '*'))
-        # Excluir carpetas
-        files = [f for f in files if os.path.isfile(f)]
-        if files:
-            latest = max(files, key=os.path.getctime)
-            descarga_estado["archivo"] = latest
-            descarga_estado["archivo_descarga"] = os.path.basename(latest)
-            descarga_estado["completado"] = True
-            descarga_estado["mensaje"] = "¡Procesamiento completado!"
     return jsonify(descarga_estado)
 
 if __name__ == '__main__':
